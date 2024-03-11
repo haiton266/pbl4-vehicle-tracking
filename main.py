@@ -25,30 +25,25 @@ detection_model = AutoDetectionModel.from_pretrained(
     device="cpu",  # Sử dụng GPU cuda:0
 )
 track_history = defaultdict(lambda: [])
-# Mở video và lấy kích thước khung hình
+
 vid = cv2.VideoCapture(f'video/{name_video}.{type_video}')
 total_frames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 widthFrame = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
 heightFrame = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
 size = (widthFrame, heightFrame)
-# size = (widthFrame // 2, heightFrame // 2)
 
-# Tạo đối tượng VideoWriter để lưu video
 out = cv2.VideoWriter('output.avi',
                       cv2.VideoWriter_fourcc(*'DIVX'), 30, size)
 
 track_colors = {}
 
-# Thiết lập ngưỡng kích thước tối thiểu
-min_width, min_height = 1, 1  # ví dụ: 30x30 pixels
 points = np.array([[0, 976], [567, 136], [1630, 140], [1919, 426], [1920, 1080], [
                   0, 1080]], np.int32)
-# Create folder if not exist
+
 Path(name_tracking).mkdir(parents=True, exist_ok=True)
 with open(f'{name_tracking}/{name_video}-{name_model}.txt', 'w', newline='') as file:
     writer = csv.writer(file)
 
-    # Các thiết lập khác
     thickness = 2
     fontscale = 1
 
@@ -58,21 +53,15 @@ with open(f'{name_tracking}/{name_video}-{name_model}.txt', 'w', newline='') as 
         if not ret:
             break
 
-        # Thêm đa giác ROI
         mask = np.zeros(im.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask, [points], 255)
         roi_img = cv2.bitwise_and(im, im, mask=mask)
         cv2.polylines(im, [points], True, (0, 255, 0), 3)
 
-        # Nếu cần giảm độ phân giải của video, hãy thêm dòng này
-        # roi_img = cv2.resize(roi_img, (widthFrame // 2, heightFrame // 2))
-        # im = cv2.resize(im, (widthFrame // 2, heightFrame // 2))
-
         frame_number = vid.get(cv2.CAP_PROP_POS_FRAMES)
 
         start_time = time.time()
 
-        # Phát hiện đối tượng
         result = get_sliced_prediction(
             roi_img,
             detection_model,
@@ -90,11 +79,9 @@ with open(f'{name_tracking}/{name_video}-{name_model}.txt', 'w', newline='') as 
 
             width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-            # Chỉ xử lý hộp giới hạn lớn hơn ngưỡng kích thước tối thiểu
-            if width >= min_width and height >= min_height:
-                det = np.array([[bbox[0], bbox[1], bbox[2], bbox[3],
-                                 object_prediction.score.value, object_prediction.category.id]])
-                dets = np.vstack([dets, det])
+            det = np.array([[bbox[0], bbox[1], bbox[2], bbox[3],
+                             object_prediction.score.value, object_prediction.category.id]])
+            dets = np.vstack([dets, det])
 
         # Cập nhật bộ theo dõi
         tracks = tracker.update(dets, roi_img)
