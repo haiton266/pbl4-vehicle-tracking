@@ -8,6 +8,8 @@ PBL at DUT
 
 First, clone this repository
 
+Second, create and activate virtualenv
+
 #### Step 2: Install package
 
 ```
